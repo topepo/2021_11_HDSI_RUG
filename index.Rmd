@@ -135,6 +135,29 @@ knitr::include_graphics("images/cap.png")
 
 
 ---
+# Or, in case you are anime/manga fans
+
+.pull-left[
+
+Original Column:
+
+```{r saitama-orig, echo = FALSE, out.width="75%", fig.align='center'}
+knitr::include_graphics("images/saitama_predictor.gif")
+```
+]
+.pull-right[
+
+Feature: 
+
+<br>
+
+```{r saitama-feat, echo = FALSE, out.width="75%", fig.align='center'}
+knitr::include_graphics("images/saitama_feature.gif")
+```
+]
+
+
+---
 # General definitions
 
 * _Data preprocessing_ are the steps that you take to make your model successful. 
@@ -330,6 +353,8 @@ chi_rec <-
 
 PCA feature extraction on the columns named in the character vector `stations`. 
 
+
+(We'll use this version of the recipe in a minute)
 
 ---
 # Other possible steps
