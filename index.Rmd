@@ -22,6 +22,7 @@ output:
 
 
 class: title-slide, left, middle
+background-image: url("images/recipes.svg")
 background-position: 85% 50%
 background-size: 30%
 background-color: #F9F8F3
@@ -334,7 +335,6 @@ chi_rec <-
 
 To deal with highly correlated predictors, find the minimum predictor set to remove to make the pairwise correlations are less than 0.85. This can be optimized by using a value of `tune()`. 
 
-There are other filter steps too, 
 
 ---
 # Other possible steps
@@ -418,6 +418,7 @@ This also means that when resampling is used, the recipe is repeatedly estimated
 
 This enables more realistic performance measures. 
 
+**Workflow** objects are a great way to bind a model and preprocessor (e.g. recipe, formula, etc.).
 
 ---
 # Adding recipes to workflows
@@ -496,7 +497,7 @@ The [tidymodels book](https://www.tmwr.org/dimensionality.html#recipe-functions)
 ---
 # A natural language processing example
 
-Julia and Emil have written an amazing text processing book: [_Supervised Machine Learning for Text Analysis in R_](https://smltar.com/) and we can use  `r pkg(textrecipes)` for processing the raw text data. 
+Julia and Emil have written an amazing text processing book: [_Supervised Machine Learning for Text Analysis in R_](https://smltar.com/) (SMLTAR) and we can use  `r pkg(textrecipes)` for processing the raw text data. 
 
 We'll use some example data on amazon reviews to demonstrate
 
@@ -586,7 +587,7 @@ recipe(score ~ review, data = training_data) %>%
 
 [Feature hashing](https://smltar.com/mlregression.html#case-study-feature-hashing) produces values that are similar to dummy/indicator variables (per token) but does not generate all possible values. 
 
-There is a lot more that can be done with text and I highly recommend taking a look at [SMTAR](https://smltar.com/).
+There is a lot more that can be done with text and I highly recommend taking a look at [SMLTAR](https://smltar.com/).
 
 
 ---
