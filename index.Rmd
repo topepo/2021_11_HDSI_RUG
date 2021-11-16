@@ -69,6 +69,26 @@ class: inverse, middle, center
 
 # _Tidy Modeling with R_ ([`tmwr.org`](https://www.tmwr.org/))
 
+
+---
+# Before we get started, some example data
+
+We'll use the Chicago "L" train data today, described in our [_Feature Engineering and Selection_](https://bookdown.org/max/FES/chicago-intro.html) book. 
+
+Several years worth of pre-pandemic data were assembled to try to predict the daily number of people entering the Clark and Lake elevated ("L") train station in Chicago. 
+
+For predictors, 
+
+* the 14-day lagged ridership at this and other stations (units: thousands of rides/day) `r emo::ji("star")`
+* weather data
+* home/away game schedules for Chicago teams
+* the date `r emo::ji("star")``r emo::ji("star")``r emo::ji("star")`
+
+The data are in the `modeldata` package. See `?Chicago`. 
+
+
+
+
 ---
 # What is feature engineering?
 
