@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Cooking Your Data with Recipes</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Max Kuhn (RStudio, PBC)" />
+    <script src="libs/header-attrs-2.11/header-attrs.js"></script>
+    <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link rel="stylesheet" href="css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="css/fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+class: title-slide, left, middle
+background-position: 85% 50%
+background-size: 30%
+background-color: #F9F8F3
+
+.pull-left[
+
+# Cooking Your Data with Recipes
+
+### Max Kuhn (RStudio, PBC)
+
+### https://github.com/topepo/2021_11_HDSI_RUG
+
+]
+
+---
+layout: false
+class: inverse, middle, center
+
+# [`tidymodels.org`](https://www.tidymodels.org/)
+
+# _Tidy Modeling with R_ ([`tmwr.org`](https://www.tmwr.org/))
+
+
+
+---
+layout: false
+class: inverse, middle, center
+
+# [`tidymodels.org`](https://www.tidymodels.org/)
+
+# _Tidy Modeling with R_ ([`tmwr.org`](https://www.tmwr.org/))
+
+---
+# What is feature engineering?
+
+First thing's first: what's a feature? 
+
+I tend to think of a feature as some representation of a predictor that will be used in a model. 
+
+Old-school features: 
+
+ * Interactions
+ * Polynomial expansions/splines
+ * PCA feature extraction
+ 
+"Feature engineering" sounds pretty cool, but let's take a minute to talk about _preprocessing_ data.  
+
+---
+# Two types of preprocessing
+
+&lt;img src="images/fe_venn.svg" width="75%" style="display: block; margin: auto;" /&gt;
+
+---
+# Two types of preprocessing
+
+&lt;img src="images/fe_venn_info.svg" width="75%" style="display: block; margin: auto;" /&gt;
+
+
+---
+# Easy examples
+
+For example, centering and scaling are definitely not feature engineering.
+
+Consider the `date` field in the Chicago data. If given as a raw predictor, it is converted to an integer. 
+
+Spoiler alert: the date is the most important factor. It can be re-encoded as:
+
+* Days since a reference date 😪
+* Day of the week ❤️❤️❤️❤️
+* Month 😪
+* Year ❤️❤️
+* Indicators for holidays ❤️❤️❤️
+* Indicators for home games for NFL, NBA, etc.  😪
+
+
+---
+# Original column
+
+&lt;img src="images/steve.gif" width="35%" style="display: block; margin: auto;" /&gt;
+
+
+---
+# Features
+
+&lt;img src="images/cap.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+
+(At least that's what we hope the difference looks like.)
+
+
+---
+# General definitions
+
+* _Data preprocessing_ are the steps that you take to make your model successful. 
+
+* _Feature engineering_ are what you do to the original predictors to make the model do the least work to predict the outcome as well as possible. 
+
+We'll demonstrate the &lt;span class="pkg"&gt;recipes&lt;/span&gt; package for all of your data needs. 
+
+---
+# Recipes prepare your data for modeling
+
+The package is extensible framework for pipeable sequences of feature engineering steps provides preprocessing tools to be applied to data. 
+    
+Statistical parameters for the steps can be estimated from an initial data set and then applied to other data sets. 
+    
+The resulting processed output can then be used as inputs for statistical or machine learning models.
+
+---
+# Loading and splitting the Chicago data
+
+
+```r
+library(tidymodels)
+tidymodels_prefer()
+data("Chicago")
+
+# Save last 14 days as a test set:
+chi_split &lt;- initial_time_split(Chicago, prop = 1 - (14/nrow(Chicago)))
+
+chi_train &lt;- training(chi_split)
+chi_test  &lt;- testing(chi_split)
+```
+
+.pull-left[
+
+```r
+ggplot(chi_train, aes(ridership)) + 
+  geom_histogram(bins = 40, col = "white")
+```
+]
+.pull-right[
+&lt;img src="index_files/figure-html/hist-1.svg" width="90%" height="50%" style="display: block; margin: auto;" /&gt;
+]
+
+
+---
+# A first recipe
+
+
+```r
+chi_rec &lt;- 
+  recipe(ridership ~ ., data = chi_train)
+
+# If ncol(data) is large, you can use
+# recipe(data = chi_train)
+```
+
+Based on the formula, the function assigns columns to roles of "outcome" or "predictor"
+
+
+```r
+summary(chi_rec)
+```
+
+```
+## # A tibble: 50 × 4
+##   variable     type    role      source  
+##   &lt;chr&gt;        &lt;chr&gt;   &lt;chr&gt;     &lt;chr&gt;   
+## 1 Austin       numeric predictor original
+## 2 Quincy_Wells numeric predictor original
+## 3 Belmont      numeric predictor original
+## 4 Archer_35th  numeric predictor original
+## 5 Oak_Park     numeric predictor original
+## 6 Western      numeric predictor original
+## # … with 44 more rows
+```
+
+
+---
+# A first recipe - work with dates
+
+
+```r
+chi_rec &lt;- 
+  recipe(ridership ~ ., data = chi_train) %&gt;% 
+* step_date(date, features = c("dow", "month", "year"))
+```
+
+This creates three new columns in the data based on the date. Now that the day-of-the-week column is a factor.
+
+---
+# A first recipe - work with dates
+
+
+```r
+chi_rec &lt;- 
+  recipe(ridership ~ ., data = chi_train) %&gt;% 
+  step_date(date, features = c("dow", "month", "year")) %&gt;% 
+* step_holiday(date)
+```
+
+Add indicators for major holidays. Specific holidays, especially those ex-US, can also be generated. 
+
+At this point, we don't need `date` anymore. Instead of deleting it (there is a step for that) we will change its _role_ to be an identification variable. 
+
+---
+# A first recipe - work with dates
+
+
+```r
+chi_rec &lt;- 
+  recipe(ridership ~ ., data = chi_train) %&gt;% 
+  step_date(date, features = c("dow", "month", "year")) %&gt;% 
+  step_holiday(date) %&gt;% 
+* update_role(date, new_role = "id")
+```
+
+`date` is still in the data set but tidymodels knows not to treat it as an analysis column. 
+
+---
+# A first recipe -create indicator variables
+
+
+```r
+chi_rec &lt;- 
+  recipe(ridership ~ ., data = chi_train) %&gt;% 
+  step_date(date, features = c("dow", "month", "year")) %&gt;% 
+  step_holiday(date) %&gt;% 
+  update_role(date, new_role = "id") %&gt;% 
+* step_dummy(all_nominal_predictors())
+```
+
+For any factor or character predictors, make binary indicators. 
+
+There are _many_ recipe steps that can convert categorical predictors to numeric columns. 
+
+
+---
+# A first recipe - filter out constant columns
+
+
+```r
+chi_rec &lt;- 
+  recipe(ridership ~ ., data = chi_train) %&gt;% 
+  step_date(date, features = c("dow", "month", "year")) %&gt;% 
+  step_holiday(date) %&gt;% 
+  update_role(date, new_role = "id") %&gt;% 
+  step_dummy(all_nominal_predictors()) %&gt;% 
+* step_zv(all_predictors())
+```
+
+In case there is a holiday that never was observed, we can delete any _zero-variance_ predictors that have a single unique value.
+
+Note that the selector chooses all columns with a role of "predictor"
+
+
+---
+# A first recipe - normalization
+
+
+```r
+chi_rec &lt;- 
+  recipe(ridership ~ ., data = chi_train) %&gt;% 
+  step_date(date, features = c("dow", "month", "year")) %&gt;% 
+  step_holiday(date) %&gt;% 
+  update_role(date, new_role = "id") %&gt;% 
+  step_dummy(all_nominal_predictors()) %&gt;% 
+  step_zv(all_predictors()) %&gt;% 
+* step_normalize(all_numeric_predictors())
+```
+
+This centers and scales the numeric predictors. 
+
+Note that this will use the training set to estimate the means and standard deviations of the data. 
+
+All data put through the recipe will be normalized using those statistics (there is no re-estimation). 
+
+
+
+---
+# A first recipe - reduce correlation
+
+
+```r
+chi_rec &lt;- 
+  recipe(ridership ~ ., data = chi_train) %&gt;% 
+  step_date(date, features = c("dow", "month", "year")) %&gt;% 
+  step_holiday(date) %&gt;% 
+  update_role(date, new_role = "id") %&gt;% 
+  step_dummy(all_nominal_predictors()) %&gt;% 
+  step_zv(all_predictors()) %&gt;% 
+  step_normalize(all_numeric_predictors()) %&gt;% 
+* step_corr(all_numeric_predictors(), threshold = 0.85)
+```
+
+To deal with highly correlated predictors, find the minimum predictor set to remove to make the pairwise correlations are less than 0.85. This can be optimized by using a value of `tune()`. 
+
+There are other filter steps too, 
+
+---
+# Other possible steps
+
+
+```r
+chi_rec &lt;- 
+  recipe(ridership ~ ., data = chi_train) %&gt;% 
+  step_date(date, features = c("dow", "month", "year")) %&gt;% 
+  step_holiday(date) %&gt;% 
+  update_role(date, new_role = "id") %&gt;% 
+  step_dummy(all_nominal_predictors()) %&gt;% 
+  step_zv(all_predictors()) %&gt;% 
+  step_normalize(all_numeric_predictors()) %&gt;% 
+* step_pca(all_of(stations))
+```
+
+PCA feature extraction on the columns named in the character vector `stations`. 
+
+
+---
+# Other possible steps
+
+
+```r
+chi_rec &lt;- 
+  recipe(ridership ~ ., data = chi_train) %&gt;% 
+  step_date(date, features = c("dow", "month", "year")) %&gt;% 
+  step_holiday(date) %&gt;% 
+  update_role(date, new_role = "id") %&gt;% 
+  step_dummy(all_nominal_predictors()) %&gt;% 
+  step_zv(all_predictors()) %&gt;% 
+  step_normalize(all_numeric_predictors()) %&gt;% 
+* step_umap(all_numeric_predictors(), outcome = ridership)
+```
+
+A fancy machine learning supervised dimension reduction technique
+
+
+---
+# Other possible steps
+
+
+```r
+chi_rec &lt;- 
+  recipe(ridership ~ ., data = chi_train) %&gt;% 
+  step_date(date, features = c("dow", "month", "year")) %&gt;% 
+  step_holiday(date) %&gt;% 
+  update_role(date, new_role = "id") %&gt;% 
+  step_dummy(all_nominal_predictors()) %&gt;% 
+  step_zv(all_predictors()) %&gt;% 
+  step_normalize(all_numeric_predictors()) %&gt;% 
+* step_ns(Clark_Lake, deg_free = 10)
+```
+
+Nonlinear transforms like _natural splines_ and so on. 
+
+
+---
+# Recipes are estimated
+
+_Every_ preprocessing step in a recipe that involved calculations uses the _training set_. For example: 
+
+ * Levels of a factor
+ * Determination of zero-variance
+ * Normalization
+ * Feature extraction
+ 
+and so on. 
+
+Once a a recipe is added to a workflow, this occurs when `fit()` is called. 
+
+
+---
+# Recipes follow this strategy
+
+&lt;img src="images/the-model.svg" width="70%" style="display: block; margin: auto;" /&gt;
+
+This also means that when resampling is used, the recipe is repeatedly estimated (along with the model) on slightly different versions of the training set. 
+
+This enables more realistic performance measures. 
+
+
+---
+# Adding recipes to workflows
+
+Let's stick to a linear model for now and add the PCA recipe (instead of a formula):
+
+.code70[
+
+
+```r
+lm_spec &lt;- linear_reg() 
+
+chi_wflow &lt;- 
+  workflow() %&gt;% 
+  add_model(lm_spec) %&gt;% 
+  add_recipe(chi_rec)
+
+chi_wflow
+```
+
+```
+## ══ Workflow ═════════════════════════════════════════════════════════════════════════
+## Preprocessor: Recipe
+## Model: linear_reg()
+## 
+## ── Preprocessor ─────────────────────────────────────────────────────────────────────
+## 6 Recipe Steps
+## 
+## • step_date()
+## • step_holiday()
+## • step_dummy()
+## • step_zv()
+## • step_normalize()
+## • step_pca()
+## 
+## ── Model ────────────────────────────────────────────────────────────────────────────
+## Linear Regression Model Specification (regression)
+## 
+## Computational engine: lm
+```
+
+]
+
+---
+# Estimate via `fit()`
+
+Fitting encompasses estimating the recipe and the model. 
+
+
+
+```r
+chi_fit &lt;- 
+  chi_wflow %&gt;% 
+  fit(chi_train)
+
+chi_fit %&gt;% 
+  tidy() %&gt;% 
+  slice_tail(n = 6)
+```
+
+```
+## # A tibble: 6 × 5
+##   term           estimate std.error statistic  p.value
+##   &lt;chr&gt;             &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
+## 1 date_month_Dec -0.132      0.0410   -3.21   1.33e- 3
+## 2 PC1             0.0477     0.0193    2.47   1.36e- 2
+## 3 PC2            -0.861      0.112    -7.68   1.80e-14
+## 4 PC3            -0.682      0.101    -6.79   1.25e-11
+## 5 PC4            -0.207      0.0959   -2.16   3.08e- 2
+## 6 PC5             0.00751    0.124     0.0605 9.52e- 1
+```
+
+
+---
+# Prediction
+
+When `predict()` is called, the fitted recipe is applied to the new data before it is predicted by the model:
+
+
+```r
+predict(chi_fit, chi_test)
+```
+
+```
+## # A tibble: 14 × 1
+##   .pred
+##   &lt;dbl&gt;
+## 1 20.4 
+## 2 21.3 
+## 3 21.6 
+## 4 21.3 
+## 5 20.7 
+## 6  8.23
+## # … with 8 more rows
+```
+
+You don't need to do anything else
+
+
+---
+# Debugging a recipe
+
+90% of the time, you will want to use a workflow to estimate and apply a recipe. 
+
+If you have an error, the original recipe object (e.g. `chi_rec`) can be estimated manually with a function called `bake()` (analogous to `fit()`). 
+
+This returns the fitted recipe. This can help debug any issues. 
+
+Another function (`bake()`) is analogous to `predict()` and gives you the processed data back. 
+
+The [tidymodels book](https://www.tmwr.org/dimensionality.html#recipe-functions) has more details on debugging. 
+
+
+---
+# Fun facts about recipes
+
+* Once `fit()` is called on a workflow, changing the model does not re-fit the recipe. 
+* A list of all known steps is [here](https://www.tidymodels.org/find/recipes/). 
+* Some steps can be [skipped](https://recipes.tidymodels.org/articles/Skipping.html) when using `predict()`. 
+* The [order](https://recipes.tidymodels.org/articles/Ordering.html) of the steps matters. 
+* There are &lt;span class="pkg"&gt;recipes&lt;/span&gt;-adjacent packages with more steps: &lt;span class="pkg"&gt;embed&lt;/span&gt;, &lt;span class="pkg"&gt;timetk&lt;/span&gt;, &lt;span class="pkg"&gt;textrecipes&lt;/span&gt;, and others. 
+* There are a lot of ways to handle [categorical predictors](https://recipes.tidymodels.org/articles/Dummies.html) even those with novel levels. 
+* Several &lt;span class="pkg"&gt;dplyr&lt;/span&gt; steps exist, such as `step_mutate()`. 
+
+---
+# A natural language processing example
+
+Julia and Emil have written an amazing text processing book: [_Supervised Machine Learning for Text Analysis in R_](https://smltar.com/) and we can use  &lt;span class="pkg"&gt;textrecipes&lt;/span&gt; for processing the raw text data. 
+
+We'll use some example data on amazon reviews to demonstrate
+
+
+```r
+library(textrecipes)
+
+data(small_fine_foods)
+# outcomes:
+str(training_data$score)
+```
+
+```
+##  Factor w/ 2 levels "great","other": 2 1 1 1 1 1 2 1 1 1 ...
+```
+
+```r
+# example review:
+strwrap(training_data$review[[10]], width = 80)
+```
+
+```
+## [1] "One of the nicest, smoothest cup of chai I've made. Nice mix of spices, largest"
+## [2] "overtone is the cardamom, but since i do like a half/half of tea with milk or"  
+## [3] "soy milk as my chai drink, this is a good base for me."
+```
+
+---
+# Split the text into tokens
+
+
+```r
+recipe(score ~ review, data = training_data) %&gt;% 
+* step_tokenize(review)
+```
+
+By default, it splits by spaces so that tokens = words. 
+
+There are many steps that do not require tokenization so this is optional. 
+
+---
+# Remove stop words? 
+
+
+```r
+recipe(score ~ review, data = training_data) %&gt;% 
+  step_tokenize(review)  %&gt;% 
+* step_stopwords(review)
+```
+
+These are words like "a", "the", etc. 
+
+An option but it [may or may not help](https://smltar.com/stopwords.html). 
+
+---
+# Stem tokens?
+
+
+```r
+recipe(score ~ review, data = training_data) %&gt;% 
+  step_tokenize(review) %&gt;% 
+* step_stem(review)
+```
+
+Stemming reduces words to a common core. For example, removing "ing$", "ed$", "s$", "ly$" and so on. 
+
+Also [optional](https://smltar.com/stemming.html). 
+
+
+---
+# Filter tokens by frequency
+
+
+```r
+recipe(score ~ review, data = training_data) %&gt;% 
+  step_tokenize(review) %&gt;% 
+* step_tokenfilter(review, min_times = tune(), max_tokens = tune())
+```
+
+You can tune/optimize the number of tokens to retain using the value of `tune()` or assign a specific value. 
+
+
+---
+# Convert to numeric features (pt 1)
+
+
+```r
+recipe(score ~ review, data = training_data) %&gt;% 
+  step_tokenize(review) %&gt;% 
+  step_tokenfilter(review, min_times = tune(), max_tokens = tune()) %&gt;% 
+* step_tfidf(review)
+```
+
+Term frequency–inverse document frequency encodings weight each token frequency by the inverse document frequency to produce a numeric feature. 
+
+
+---
+# Convert to numeric features (pt 2)
+
+
+```r
+recipe(score ~ review, data = training_data) %&gt;% 
+  step_tokenize(review) %&gt;% 
+  step_tokenfilter(review, min_times = tune(), max_tokens = tune()) %&gt;% 
+* step_texthash(review, num_terms = tune())
+```
+
+[Feature hashing](https://smltar.com/mlregression.html#case-study-feature-hashing) produces values that are similar to dummy/indicator variables (per token) but does not generate all possible values. 
+
+There is a lot more that can be done with text and I highly recommend taking a look at [SMTAR](https://smltar.com/).
+
+
+---
+
+# Thanks
+
+Thanks for the invitation to speak today!
+
+The tidymodels team: Davis Vaughan, Julia Silge, and Hanna Frick. 
+
+Special thanks for the other folks who contributed so much to tidymodels: Edgar Ruiz, Emil Hvitfeldt, Alison Hill, Desirée De Leon, and the tidyverse team.
+
+These slides were made with the [`xaringan`](https://bookdown.org/yihui/rmarkdown/xaringan.html) package and styled by Alison Hill. 
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"slideNumberFormat": "<div class=\"progress-bar-container\">\n  <div class=\"progress-bar\" style=\"width: calc(%current% / %total% * 100%);\">\n  </div>\n</div>\n",
+"highlightLanguage": ["r", "css", "yaml"],
+"highlightLines": true,
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
