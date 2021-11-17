@@ -66,6 +66,32 @@ For predictors,
 The data are in the `modeldata` package. See `?Chicago`. 
 
 
+---
+# Loading and splitting the Chicago data
+
+
+```r
+library(tidymodels)
+tidymodels_prefer()
+data("Chicago")
+
+# Save last 14 days as a test set:
+chi_split &lt;- initial_time_split(Chicago, prop = 1 - (14/nrow(Chicago)))
+
+chi_train &lt;- training(chi_split)
+chi_test  &lt;- testing(chi_split)
+```
+
+.pull-left[
+
+```r
+ggplot(chi_train, aes(ridership)) + 
+  geom_histogram(bins = 40, col = "white")
+```
+]
+.pull-right[
+&lt;img src="index_files/figure-html/hist-1.svg" width="90%" height="50%" style="display: block; margin: auto;" /&gt;
+]
 
 
 ---
@@ -162,33 +188,6 @@ The package is extensible framework for pipeable sequences of feature engineerin
 Statistical parameters for the steps can be estimated from an initial data set and then applied to other data sets. 
     
 The resulting processed output can then be used as inputs for statistical or machine learning models.
-
----
-# Loading and splitting the Chicago data
-
-
-```r
-library(tidymodels)
-tidymodels_prefer()
-data("Chicago")
-
-# Save last 14 days as a test set:
-chi_split &lt;- initial_time_split(Chicago, prop = 1 - (14/nrow(Chicago)))
-
-chi_train &lt;- training(chi_split)
-chi_test  &lt;- testing(chi_split)
-```
-
-.pull-left[
-
-```r
-ggplot(chi_train, aes(ridership)) + 
-  geom_histogram(bins = 40, col = "white")
-```
-]
-.pull-right[
-&lt;img src="index_files/figure-html/hist-1.svg" width="90%" height="50%" style="display: block; margin: auto;" /&gt;
-]
 
 
 ---

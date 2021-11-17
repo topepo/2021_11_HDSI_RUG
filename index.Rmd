@@ -87,6 +87,33 @@ For predictors,
 The data are in the `modeldata` package. See `?Chicago`. 
 
 
+---
+# Loading and splitting the Chicago data
+
+```{r previously}
+library(tidymodels)
+tidymodels_prefer()
+data("Chicago")
+
+# Save last 14 days as a test set:
+chi_split <- initial_time_split(Chicago, prop = 1 - (14/nrow(Chicago)))
+
+chi_train <- training(chi_split)
+chi_test  <- testing(chi_split)
+```
+
+.pull-left[
+```{r hist-code, eval = FALSE}
+ggplot(chi_train, aes(ridership)) + 
+  geom_histogram(bins = 40, col = "white")
+```
+]
+.pull-right[
+```{r hist, ref.label="hist-code", echo = FALSE, out.height = '50%', out.width= '90%', fig.width=6, fig.height=4,fig.align='center', dev = 'svg', dev.args = list(bg = "transparent")}
+ggplot(chi_train, aes(ridership)) + 
+  geom_histogram(bins = 40, col = "white")
+```
+]
 
 
 ---
@@ -195,34 +222,6 @@ The package is extensible framework for pipeable sequences of feature engineerin
 Statistical parameters for the steps can be estimated from an initial data set and then applied to other data sets. 
     
 The resulting processed output can then be used as inputs for statistical or machine learning models.
-
----
-# Loading and splitting the Chicago data
-
-```{r previously}
-library(tidymodels)
-tidymodels_prefer()
-data("Chicago")
-
-# Save last 14 days as a test set:
-chi_split <- initial_time_split(Chicago, prop = 1 - (14/nrow(Chicago)))
-
-chi_train <- training(chi_split)
-chi_test  <- testing(chi_split)
-```
-
-.pull-left[
-```{r hist-code, eval = FALSE}
-ggplot(chi_train, aes(ridership)) + 
-  geom_histogram(bins = 40, col = "white")
-```
-]
-.pull-right[
-```{r hist, ref.label="hist-code", echo = FALSE, out.height = '50%', out.width= '90%', fig.width=6, fig.height=4,fig.align='center', dev = 'svg', dev.args = list(bg = "transparent")}
-ggplot(chi_train, aes(ridership)) + 
-  geom_histogram(bins = 40, col = "white")
-```
-]
 
 
 ---
