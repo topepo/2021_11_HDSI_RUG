@@ -251,7 +251,7 @@ chi_rec <-
   step_date(date, features = c("dow", "month", "year")) #<<
 ```
 
-This creates three new columns in the data based on the date. Now that the day-of-the-week column is a factor.
+This creates three new columns in the data based on the date. Note that the day-of-the-week and month columns will be factors.
 
 ---
 # A first recipe - work with dates
